@@ -71,9 +71,9 @@ public class Mandelbrot{
 	}
 
 	public static void main(String[] args){
-		int width = 20000;
-		int height = 20000;
-		int maxIters = 100000;
+		int width = 1000;
+		int height = 1000;
+		int maxIters = 100;
 
 		double minX = -2;
 		double maxX = 1;
