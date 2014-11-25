@@ -1,4 +1,5 @@
 package mandelbrot;
+
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
@@ -11,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 import javax.swing.JFrame;
 import javax.imageio.ImageIO;
 
-public class Mandelbrot{
+public class Mandelbrot {
 	private BufferedImage I;
 
 	private double dx, dy, maxIters;
@@ -21,10 +22,8 @@ public class Mandelbrot{
 	private double minX;
 	private double minY;
 
-	public Mandelbrot(
-			double minX, double maxX,
-			double minY, double maxY,
-			int width, int height, int maxIters){
+	public Mandelbrot(double minX, double maxX, double minY, double maxY,
+			int width, int height, int maxIters) {
 
 		this.I = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
 
@@ -42,15 +41,15 @@ public class Mandelbrot{
 		this.maxIters = maxIters;
 	}
 
-	public void saveImage(String fileType, File f) throws IOException{
+	public void saveImage(String fileType, File f) throws IOException {
 		ImageIO.write(I, fileType, f);
 	}
 
-	public void render(){
+	public void render() {
 		double zx, zy, cX, cY, tmp;
 
 		ExecutorService ex = Executors.newFixedThreadPool(10);
-		
+
 		for (int y = 0; y < height; y++) {
 			cY = minY + dy * y;
 			ex.submit(new MCaculation(dx, minX, cY, y, maxIters, I));
@@ -70,7 +69,7 @@ public class Mandelbrot{
 		}
 	}
 
-	public static void main(String[] args){
+	public static void main(String[] args) {
 		int width = 1000;
 		int height = 100000;
 		int maxIters = 100;
@@ -80,12 +79,13 @@ public class Mandelbrot{
 		double minY = -1.5;
 		double maxY = 1.5;
 
-//		double minX = -.74363 ;
-//		double maxX = -.74464;
-//		double minY = .09350;
-//		double maxY = .09451;
-		
-		Mandelbrot m = new Mandelbrot(minX, maxX, minY, maxY, width, height, maxIters);
+		// double minX = -.74363 ;
+		// double maxX = -.74464;
+		// double minY = .09350;
+		// double maxY = .09451;
+
+		Mandelbrot m = new Mandelbrot(minX, maxX, minY, maxY, width, height,
+				maxIters);
 		m.render();
 
 		try {
