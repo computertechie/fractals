@@ -1,3 +1,4 @@
+
 package mandelbrot;
 
 import java.awt.image.BufferedImage;
@@ -10,12 +11,14 @@ public class MCaculation implements Runnable {
 	double imaginary;
 	double max;
 	int y;
+	int xTileNum;
 	
 	BufferedImage image;
 	
-	public MCaculation(double dx, double minX, double i, int y, double maxIter, BufferedImage image){
+	public MCaculation(double dx, double minX, int xTileNum, double i, int y, double maxIter, BufferedImage image){
 		this.dx = dx;
 		this.minx = minX;
+		this.xTileNum = xTileNum;
 		
 		imaginary = i;
 		this.y = y;
@@ -30,7 +33,7 @@ public class MCaculation implements Runnable {
 		
 		for (int x = 0; x < image.getWidth(); x++) {
 			zx = zy = 0;
-			cX = minx + dx * x;
+			cX = minx + dx * (x + xTileNum * image.getWidth());
 			cY = imaginary;
 
 			int iter;

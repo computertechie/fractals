@@ -41,37 +41,38 @@ public class Mandelbrot {
 		this.maxIters = maxIters;
 	}
 
-	public void saveImage(String fileType, File f) throws IOException {
+	public void saveImage(String fileType, File f, BufferedImage I) throws IOException {
 		ImageIO.write(I, fileType, f);
 	}
 
-	public void render() {
-		double zx, zy, cX, cY, tmp;
+	public void render() throws IOException, InterruptedException {
+		double cY;
+		int[] tileSize = {4000, 4000}; //X, Y
 
-		ExecutorService ex = Executors.newFixedThreadPool(10);
+		ExecutorService ex;
 
-		for (int y = 0; y < height; y++) {
-			cY = minY + dy * y;
-			ex.submit(new MCaculation(dx, minX, cY, y, maxIters, I));
-		}
-		ex.shutdown();
-		try {
-			ex.awaitTermination(10, TimeUnit.HOURS);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			try {
-				this.saveImage("png", new File("mandel_incomplete.png"));
-			} catch (IOException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
+		BufferedImage image = new BufferedImage(tileSize[0], tileSize[1], BufferedImage.TYPE_INT_RGB);
+
+		for (int xTileNum = 0; xTileNum * tileSize[0] < this.width; xTileNum++){
+			
+			for (int yTileNum = 0; yTileNum * tileSize[1] < this.height; yTileNum++){
+				System.out.println("x = " + xTileNum + " y = " + yTileNum);
+				ex = Executors.newFixedThreadPool(10);
+				for (int y = 0; y < tileSize[1]; y++) {
+					cY = minY + dy * (y + tileSize[1] * yTileNum);
+					ex.submit(new MCaculation(dx, minX, xTileNum, cY, y, maxIters, image));
+				}
+				ex.shutdown();
+				ex.awaitTermination(1, TimeUnit.HOURS);
+				
+				this.saveImage("png", new File("tile_" + xTileNum + "_" + yTileNum + ".png"), image);
 			}
-			e.printStackTrace();
 		}
 	}
 
 	public static void main(String[] args) {
-		int width = 1000;
-		int height = 100000;
+		int width = 4000;
+		int height = 4000;
 		int maxIters = 100;
 
 		double minX = -2;
@@ -86,12 +87,15 @@ public class Mandelbrot {
 
 		Mandelbrot m = new Mandelbrot(minX, maxX, minY, maxY, width, height,
 				maxIters);
-		m.render();
-
 		try {
-			m.saveImage("png", new File("mandel3.png"));
+			m.render();
 		} catch (IOException e) {
-			System.out.println("Error: Couldn't save file \r\n");
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			System.err.println("Couldn't create files");
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 
 		System.out.println("Done");
