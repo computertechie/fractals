@@ -60,7 +60,7 @@ public class Mandelbrot {
 				ex = Executors.newFixedThreadPool(10);
 				for (int y = 0; y < tileSize[1]; y++) {
 					cY = minY + dy * (y + tileSize[1] * yTileNum);
-					ex.submit(new MCaculation(dx, minX, xTileNum, cY, y, maxIters, image));
+					ex.submit(new JCaculation(dx, minX, xTileNum, cY, y, maxIters, image));
 				}
 				ex.shutdown();
 				ex.awaitTermination(1, TimeUnit.HOURS);
