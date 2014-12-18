@@ -60,8 +60,9 @@ public class Mandelbrot {
 				ex = Executors.newFixedThreadPool(10);
 				for (int y = 0; y < tileSize[1]; y++) {
 					cY = minY + dy * (y + tileSize[1] * yTileNum);
-					ex.submit(new JCaculation(dx, minX, xTileNum, cY, y, maxIters, image));
+					ex.submit(new MCaculation(dx, minX, xTileNum, cY, y, maxIters, image));
 				}
+				
 				ex.shutdown();
 				ex.awaitTermination(1, TimeUnit.HOURS);
 				
@@ -99,7 +100,7 @@ public class Mandelbrot {
 		}
 
 		System.out.println("Done");
-		System.out.println(0xFFFFFF);
+		//System.out.println(0xFFFFFF);
 		System.out.println(m.dx);
 		System.out.println(m.dy);
 	}

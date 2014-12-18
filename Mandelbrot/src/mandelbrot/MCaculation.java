@@ -2,61 +2,37 @@
 package mandelbrot;
 
 import java.awt.image.BufferedImage;
-import java.util.concurrent.Callable;
+import org.apache.commons.math3.complex.Complex;
 
-public class MCaculation implements Runnable {
-	double dx;
-	double minx;
-	
-	double imaginary;
-	double max;
-	int y;
-	int xTileNum;
-	
-	BufferedImage image;
+public class MCaculation extends RowCalculation {
 	
 	public MCaculation(double dx, double minX, int xTileNum, double i, int y, double maxIter, BufferedImage image){
-		this.dx = dx;
-		this.minx = minX;
-		this.xTileNum = xTileNum;
-		
-		imaginary = i;
-		this.y = y;
-		max = maxIter;
-		
-		this.image = image;
+		super(dx, minX, xTileNum, i, y, maxIter, image);
 	}
 
 	@Override
-	public void run() {
-		double zx, zy, cX, cY, tmp;
+	protected void fillPixel(int x, int y, Complex c) {
+		// TODO Auto-generated method stub
+		int iter;
+		Complex z = new Complex(c.getReal(), c.getImaginary());
 		
-		for (int x = 0; x < image.getWidth(); x++) {
-			zx = zy = 0;
-			cX = minx + dx * (x + xTileNum * image.getWidth());
-			cY = imaginary;
-
-			int iter;
-			for(iter = 0; iter < max && zx * zx + zy * zy < 4; iter++){
-				tmp = zx * zx - zy * zy + cX;
-				zy = 2.0 * zx * zy + cY;
-				zx = tmp;
-			}
-
-			int color = (int) (767 * (iter / max));
-			//int color = x;
-
-			if(color > 255 & color <= 511){
-				color = (color & 0xFF) << 8 | 0xFF;
-			}
-
-			else if(color > 511 && color < 767){
-				color = (color & 0xFF) << 16 | 0xFFFF;
-			} else {
-				color = 0;
-			}
-
-			image.setRGB(x, y, color);
+		for(iter = 0; iter < max && z.abs() < 2; iter++){
+			z = z.pow(2).add(c);
 		}
+
+		int color = (int) (767 * (iter / max));
+		//int color = x;
+
+		if(color > 255 & color <= 511){
+			color = (color & 0xFF) << 8 | 0xFF;
+		}
+
+		else if(color > 511 && color < 767){
+			color = (color & 0xFF) << 16 | 0xFFFF;
+		} else if(color >= 767){
+			color = 0;
+		}
+
+		image.setRGB(x, y, color);
 	}
 }
