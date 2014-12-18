@@ -25,8 +25,6 @@ public class Mandelbrot {
 	public Mandelbrot(double minX, double maxX, double minY, double maxY,
 			int width, int height, int maxIters) {
 
-		this.I = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-
 		this.dx = (maxX - minX) / width;
 		this.dy = (maxY - minY) / height;
 
@@ -47,12 +45,18 @@ public class Mandelbrot {
 
 	public void render() throws IOException, InterruptedException {
 		double cY;
-		int[] tileSize = {4000, 4000}; //X, Y
-
 		ExecutorService ex;
 
+		int[] tileSize = {5000, 5000}; //X, Y
+		if(this.height < tileSize[1]){
+			tileSize[1] = this.height;
+		}
+		if(this.width < tileSize[0]){
+			tileSize[0] = this.width;
+		}
+		
 		BufferedImage image = new BufferedImage(tileSize[0], tileSize[1], BufferedImage.TYPE_INT_RGB);
-
+		
 		for (int xTileNum = 0; xTileNum * tileSize[0] < this.width; xTileNum++){
 			
 			for (int yTileNum = 0; yTileNum * tileSize[1] < this.height; yTileNum++){
@@ -66,20 +70,23 @@ public class Mandelbrot {
 				ex.shutdown();
 				ex.awaitTermination(1, TimeUnit.HOURS);
 				
-				this.saveImage("png", new File("tile_" + xTileNum + "_" + yTileNum + ".png"), image);
+				File f =  new File("./last/tile_" + xTileNum + "_" + yTileNum + ".png");
+				f.mkdirs();
+				
+				this.saveImage("png", f, image);
 			}
 		}
 	}
 
 	public static void main(String[] args) {
-		int width = 4000;
-		int height = 4000;
-		int maxIters = 5;
+		int width = 20000;
+		int height = 52000;
+		int maxIters = 150;
 
-		double minX = -2;
-		double maxX = 1;
-		double minY = -2;
-		double maxY = 2;
+		double minX = -10;
+		double maxX = 5;
+		double minY = -20;
+		double maxY = 20;
 
 		// double minX = -.74363 ;
 		// double maxX = -.74464;

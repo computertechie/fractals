@@ -9,16 +9,6 @@ import javax.tools.JavaCompiler;
 import org.apache.commons.math3.complex.Complex;
 
 public class JCalculation extends RowCalculation {
-	double dx;
-	double minx;
-	
-	double imaginary;
-	double max;
-	int y;
-	int xTileNum;
-	
-	BufferedImage image;
-	
 	public JCalculation(double dx, double minX, int xTileNum, double i, int y, double maxIter, BufferedImage image){
 		super(dx, minX, xTileNum, i, y, maxIter, image);
 	}
@@ -26,9 +16,8 @@ public class JCalculation extends RowCalculation {
 	@Override
 	protected void fillPixel(int x, int y, Complex c) {
 		int iter;
-		for(iter = 0; iter < this.max && c.abs() < 3; iter++ ){
-			c = c.multiply(c).add(.279);
-		}
+		for(iter = 0; iter < this.max && c.abs() < 35; iter++ ){
+			c = c.pow(2).multiply(c.exp()).add(.33);		}
 		
 		int color = (int) (767 * (iter / max));
 		//int color = x;

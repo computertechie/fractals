@@ -4,9 +4,9 @@ package mandelbrot;
 import java.awt.image.BufferedImage;
 import org.apache.commons.math3.complex.Complex;
 
-public class MCaculation extends RowCalculation {
+public class MCalculation extends RowCalculation {
 	
-	public MCaculation(double dx, double minX, int xTileNum, double i, int y, double maxIter, BufferedImage image){
+	public MCalculation(double dx, double minX, int xTileNum, double i, int y, double maxIter, BufferedImage image){
 		super(dx, minX, xTileNum, i, y, maxIter, image);
 	}
 
