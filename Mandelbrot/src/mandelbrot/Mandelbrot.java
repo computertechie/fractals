@@ -60,7 +60,7 @@ public class Mandelbrot {
 				ex = Executors.newFixedThreadPool(10);
 				for (int y = 0; y < tileSize[1]; y++) {
 					cY = minY + dy * (y + tileSize[1] * yTileNum);
-					ex.submit(new MCaculation(dx, minX, xTileNum, cY, y, maxIters, image));
+					ex.submit(new JCalculation(dx, minX, xTileNum, cY, y, maxIters, image));
 				}
 				
 				ex.shutdown();
@@ -74,12 +74,12 @@ public class Mandelbrot {
 	public static void main(String[] args) {
 		int width = 4000;
 		int height = 4000;
-		int maxIters = 100;
+		int maxIters = 5;
 
 		double minX = -2;
 		double maxX = 1;
-		double minY = -1.5;
-		double maxY = 1.5;
+		double minY = -2;
+		double maxY = 2;
 
 		// double minX = -.74363 ;
 		// double maxX = -.74464;
