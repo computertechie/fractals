@@ -14,8 +14,9 @@ public class JCalculation extends RowCalculation {
 	protected void fillPixel(int x, int y, Complex c) {
 		int iter;
 		
-		for(iter = 0; iter < this.max && !Double.isInfinite(c.abs()); iter++ ){
-			c = c.exp().multiply(c.sin().add(1)).add(.33);		}
+		for(iter = 0; iter < this.max && c.abs() < 4; iter++ ){
+			c = c.multiply(c).add(new Complex(.285, .01));
+		}
 		
 	//	System.err.println(c.abs());
 		
