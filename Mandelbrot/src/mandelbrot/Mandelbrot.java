@@ -79,19 +79,19 @@ public class Mandelbrot {
 	}
 
 	public static void main(String[] args) {
-		int width = 20000;
-		int height = 52000;
-		int maxIters = 150;
+		int width = 3000;
+		int height = 3000;
+		int maxIters = 15;
 
-		double minX = -10;
-		double maxX = 5;
-		double minY = -20;
-		double maxY = 20;
+//		double minX = 1.00405;
+//		double maxX = 1.0040625;
+//		double minY = 1.02995;
+//		double maxY = 1.0299625;
 
-		// double minX = -.74363 ;
-		// double maxX = -.74464;
-		// double minY = .09350;
-		// double maxY = .09451;
+		double minX = -100 ;
+		double maxX = 100;
+		double minY = -100;
+		double maxY = 100;
 
 		Mandelbrot m = new Mandelbrot(minX, maxX, minY, maxY, width, height,
 				maxIters);
