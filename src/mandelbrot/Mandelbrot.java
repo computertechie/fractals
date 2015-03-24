@@ -58,9 +58,9 @@ public class Mandelbrot {
 		BufferedImage image = new BufferedImage(tileSize[0], tileSize[1], BufferedImage.TYPE_INT_RGB);
 		
 		for (int xTileNum = 0; xTileNum * tileSize[0] < this.width; xTileNum++){
-			
+			CpuProfiler.startTask("xTile: "+xTileNum);
 			for (int yTileNum = 0; yTileNum * tileSize[1] < this.height; yTileNum++){
-				System.out.println("x = " + xTileNum + " y = " + yTileNum);
+			    CpuProfiler.startTask("yTile: "+yTileNum);
 				ex = Executors.newFixedThreadPool(10);
 				for (int y = 0; y < tileSize[1]; y++) {
 					cY = minY + dy * (y + tileSize[1] * yTileNum);
@@ -74,14 +74,17 @@ public class Mandelbrot {
 				f.mkdirs();
 				
 				this.saveImage("png", f, image);
+                CpuProfiler.endTask();;
 			}
+            CpuProfiler.endTask();
 		}
 	}
 
 	public static void main(String[] args) {
+        CpuProfiler.startTask("Main");
 		int width = 3000;
 		int height = 3000;
-		int maxIters = 100;
+		int maxIters = 500;
 
 //		double minX = 1.00405;
 //		double maxX = 1.0040625;
@@ -93,10 +96,14 @@ public class Mandelbrot {
 		double minY = -2;
 		double maxY = 2;
 
+        CpuProfiler.startTask("Mandelbrot creation.");
 		Mandelbrot m = new Mandelbrot(minX, maxX, minY, maxY, width, height,
 				maxIters);
+        CpuProfiler.endTask();
 		try {
+            CpuProfiler.startTask("m.render()");
 			m.render();
+            CpuProfiler.endTask();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -106,9 +113,10 @@ public class Mandelbrot {
 			e.printStackTrace();
 		}
 
-		System.out.println("Done");
+//		System.out.println("Done");
 		//System.out.println(0xFFFFFF);
-		System.out.println(m.dx);
-		System.out.println(m.dy);
+//		System.out.println(m.dx);
+//		System.out.println(m.dy);
+        CpuProfiler.endTask();
 	}
 }
