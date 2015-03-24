@@ -1,7 +1,7 @@
 package mandelbrot;
 
-import java.awt.Color;
-import java.awt.Graphics;
+import org.lwjgl.opengl.Display;
+
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -9,7 +9,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import javax.swing.JFrame;
 import javax.imageio.ImageIO;
 
 public class Mandelbrot {
@@ -24,6 +23,8 @@ public class Mandelbrot {
 
 	public Mandelbrot(double minX, double maxX, double minY, double maxY,
 			int width, int height, int maxIters) {
+
+        System.out.println(this.getClass().getResource("/assets/mandelbrot.compute"));
 
 		this.dx = (maxX - minX) / width;
 		this.dy = (maxY - minY) / height;
@@ -82,36 +83,51 @@ public class Mandelbrot {
 
 	public static void main(String[] args) {
         CpuProfiler.startTask("Main");
-		int width = 3000;
-		int height = 3000;
-		int maxIters = 500;
+        System.setProperty("org.lwjgl.librarypath", "E:\\Documents\\Projects\\fractals\\build\\natives\\windows");
+
+        GpuInterface gpuInterface = new GpuInterface(2048, 2048);
+
+        CpuProfiler.startTask("iterate");
+        gpuInterface.iterate();
+        CpuProfiler.endTask();
+
+        File f =  new File("./last/tile_3.png");
+        f.mkdirs();
+        gpuInterface.saveRender(f);
+        while(!Display.isCloseRequested()){
+            gpuInterface.render();
+        }
+
+//		int width = 3000;
+//		int height = 3000;
+//		int maxIters = 500;
 
 //		double minX = 1.00405;
 //		double maxX = 1.0040625;
 //		double minY = 1.02995;
 //		double maxY = 1.0299625;
 
-		double minX = -2 ;
-		double maxX = 2;
-		double minY = -2;
-		double maxY = 2;
+//		double minX = -2 ;
+//		double maxX = 2;
+//		double minY = -2;
+//		double maxY = 2;
 
-        CpuProfiler.startTask("Mandelbrot creation.");
-		Mandelbrot m = new Mandelbrot(minX, maxX, minY, maxY, width, height,
-				maxIters);
-        CpuProfiler.endTask();
-		try {
-            CpuProfiler.startTask("m.render()");
-			m.render();
-            CpuProfiler.endTask();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			System.err.println("Couldn't create files");
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+//        CpuProfiler.startTask("Mandelbrot creation.");
+//		Mandelbrot m = new Mandelbrot(minX, maxX, minY, maxY, width, height,
+//				maxIters);
+//        CpuProfiler.endTask();
+//		try {
+//            CpuProfiler.startTask("m.render()");
+//			m.render();
+//            CpuProfiler.endTask();
+//		} catch (IOException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//			System.err.println("Couldn't create files");
+//		} catch (InterruptedException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
 
 //		System.out.println("Done");
 		//System.out.println(0xFFFFFF);
