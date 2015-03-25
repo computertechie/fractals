@@ -61,14 +61,11 @@ public class GpuInterface {
         int height = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
         int channels = 0;
         int byteCount = 0;
-        if(format == GL30.GL_RGBA32F)
-            System.out.println("hrm");
         switch (format) {
             case GL11.GL_RGB:
                 channels = 3;
                 break;
             case GL11.GL_RGBA:
-            case GL30.GL_RGBA32F:
             default:
                 channels = 4;
                 break;
@@ -100,28 +97,29 @@ public class GpuInterface {
 //            GL42.glBindImageTexture(0, tileTextures.get(i), 0, false, 0, GL15.GL_WRITE_ONLY, GL30.GL_RGBA32F);
 //        }
 
-        GL42.glBindImageTexture(0, debugTexture, 0, false, 0, GL15.GL_WRITE_ONLY, GL30.GL_RGBA32F);
+        GL42.glBindImageTexture(0, debugTexture, 0, false, 0, GL15.GL_READ_WRITE, GL11.GL_RGBA8);
         int error = GL11.glGetError();
         if(error!=0){
             System.err.println("Error: " + error );
         }
         GL43.glDispatchCompute(rHeight/workgroupSize_x, rWidth/workgroupSize_y, 1);
-        GL42.glBindImageTexture(0, 0, 0, false, 0, GL15.GL_READ_WRITE, GL30.GL_RGBA32F);
+        GL42.glBindImageTexture(0, 0, 0, false, 0, GL15.GL_READ_WRITE, GL11.GL_RGBA8);
         error = GL11.glGetError();
         if(error!=0){
             System.err.println("Error2: " + error );
         }
 
-        GL42.glMemoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
         GL20.glUseProgram(0);
     }
 
     public void render(){
+        GL42.glMemoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
         GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
         GL20.glUseProgram(renderProgramId);
         GL30.glBindVertexArray(quadVAO);
+        GL13.glActiveTexture(GL13.GL_TEXTURE0);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, debugTexture);
-        GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+        GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, 6);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
         GL30.glBindVertexArray(0);
         GL20.glUseProgram(0);
@@ -136,10 +134,10 @@ public class GpuInterface {
 //            Display.create(new PixelFormat(), new ContextAttribs(3, 2).withProfileCore(true).withForwardCompatible(true));
             Display.create(new PixelFormat(), new ContextAttribs(4,3).withProfileCore(true).withForwardCompatible(true).withDebug(true));
             Display.setResizable(true);
-            GL11.glEnable(GL11.GL_DEPTH_TEST);
-            GL11.glDepthFunc(GL11.GL_LEQUAL);
+//            GL11.glEnable(GL11.GL_DEPTH_TEST);
+//            GL11.glDepthFunc(GL11.GL_LEQUAL);
             GL11.glViewport(0, 0, width, height);
-            GL11.glClearColor(0, 0, 0f, 0);
+            GL11.glClearColor(0, 0, 0, 0);
             ARBDebugOutput.glDebugMessageCallbackARB(new ARBDebugOutputCallback());
             Keyboard.create();
         } catch (LWJGLException e) {
@@ -212,11 +210,12 @@ public class GpuInterface {
     }
 
     private void createTexture(int texID){
+        GL13.glActiveTexture(GL13.GL_TEXTURE0);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, texID);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
         ByteBuffer black = null;
-        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, rWidth, rHeight, 0, GL11.GL_RGBA, GL11.GL_FLOAT, black);
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0,  GL11.GL_RGBA8, rWidth, rHeight, 0, GL11.GL_RGBA, GL11.GL_FLOAT, black);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
     }
 
@@ -225,10 +224,13 @@ public class GpuInterface {
         int vbo = GL15.glGenBuffers();
         GL30.glBindVertexArray(vao);
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-        IntBuffer bb = BufferUtils.createIntBuffer(4 * 3);
+        IntBuffer bb = BufferUtils.createIntBuffer(4 * 6);
         bb.put(-1).put(-1);
-        bb.put(-1).put(3);
-        bb.put(3).put(-1);
+        bb.put(1).put(-1);
+        bb.put(1).put(1);
+        bb.put(1).put(1);
+        bb.put(-1).put(1);
+        bb.put(-1).put(-1);
         bb.flip();
         GL15.glBufferData(GL15.GL_ARRAY_BUFFER, bb, GL15.GL_STATIC_DRAW);
         GL20.glEnableVertexAttribArray(0);

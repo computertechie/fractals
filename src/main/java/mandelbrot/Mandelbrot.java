@@ -87,13 +87,19 @@ public class Mandelbrot {
 
         GpuInterface gpuInterface = new GpuInterface(2048, 2048);
 
+        File f;
         CpuProfiler.startTask("iterate");
-        gpuInterface.iterate();
+//        for(int i = 0; i<10000; i++) {
+            gpuInterface.iterate();
+
+            f = new File("./last/tile1.png");
+            f.mkdirs();
+            gpuInterface.saveRender(f);
+            gpuInterface.render();
+//            System.out.println(i);
+//        }
         CpuProfiler.endTask();
 
-        File f =  new File("./last/tile_3.png");
-        f.mkdirs();
-        gpuInterface.saveRender(f);
         while(!Display.isCloseRequested()){
             gpuInterface.render();
         }
