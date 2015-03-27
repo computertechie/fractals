@@ -1,7 +1,7 @@
 #version 430 core
 
 //layout(binding = 0, rgba8ui) uniform uimage2D resultTexture;
-layout(binding = 0, rg32f) uniform image2D complexComponentTexture;
+layout(binding = 0, rg16f) uniform image2D complexComponentTexture;
 layout(binding = 1, r32i) uniform iimage2D iterationsTexture;
 layout(location = 2) uniform int lastMaxIterations;
 layout(location = 3) uniform vec2 dx_dy;

@@ -102,10 +102,12 @@ public class Mandelbrot {
 		GL11.glFinish();
 		CpuProfiler.endTask();
 
+		CpuProfiler.startTask("Saving.");
         File f;
 		f = new File("./last/tile_"+renderHeight+"_"+renderWidth+"_"+iterations+".png");
 		f.mkdirs();
-//		gpuInterface.saveRender(f);
+		gpuInterface.saveRender(f);
+		CpuProfiler.endTask();
 
         while(!Display.isCloseRequested()){
             gpuInterface.render(iterations);
