@@ -85,60 +85,34 @@ public class Mandelbrot {
         CpuProfiler.startTask("Main");
         System.setProperty("org.lwjgl.librarypath", "E:\\Documents\\Projects\\fractals\\build\\natives\\windows");
 
-		int renderWidth = 8096, renderHeight = 8096;
+		int renderWidth = 1024, renderHeight = 1024, iterations = 10000;
 		double mMinY = -1, mMaxY = 1, mMinX = -1, mMaxX = 1, mDY, mDX;
 
 		mDX = (mMaxX - mMinX) / renderWidth;
 		mDY = (mMaxY - mMinY) / renderHeight;
 
 
-        GpuInterface gpuInterface = new GpuInterface(renderWidth, renderHeight, mMinX, mMinY, mDX, mDY);
+        GpuInterface gpuInterface = new GpuInterface(renderWidth, renderHeight, mMinX, mMinY, mDX, mDY, iterations);
 
         File f;
         CpuProfiler.startTask("iterate");
-        for(int i = 0; i<10000; i++) {
-            gpuInterface.iterate(i);
+        for(int i = 0; i<iterations; i++) {
+			System.out.println(i);
+			gpuInterface.iterate(i);
+//			if(i%10==0) {
+				gpuInterface.render();
+//			}
         }
 		GL11.glFinish();
 		CpuProfiler.endTask();
 
-		f = new File("./last/tile3.png");
+		f = new File("./last/tile_"+renderHeight+"_"+renderWidth+"_"+iterations+".png");
 		f.mkdirs();
 		gpuInterface.saveRender(f);
 
         while(!Display.isCloseRequested()){
             gpuInterface.render();
         }
-
-		int width = 3000;
-		int height = 3000;
-		int maxIters = 128;
-
-//		double minX = 1.00405;
-//		double maxX = 1.0040625;
-//		double minY = 1.02995;
-//		double maxY = 1.0299625;
-
-		double minX = -1;
-		double maxX = 1;
-		double minY = -1;
-		double maxY = 1;
-
-        CpuProfiler.startTask("Mandelbrot creation.");
-//		Mandelbrot m = new Mandelbrot(minX, maxX, minY, maxY, width, height, maxIters);
-//		try {
-//            CpuProfiler.startTask("m.render()");
-//			m.render();
-//            CpuProfiler.endTask();
-//		} catch (IOException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//			System.err.println("Couldn't create files");
-//		} catch (InterruptedException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-        CpuProfiler.endTask();
         CpuProfiler.endTask();
 	}
 }

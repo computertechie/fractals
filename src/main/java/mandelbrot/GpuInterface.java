@@ -28,16 +28,17 @@ public class GpuInterface {
 
     private int complexComponentTexture, iterationsTexture;
 
-    private int rWidth, rHeight;
+    private int rWidth, rHeight, maxIterations;
     private double minX, minY, dX, dY;
 
-    public GpuInterface(int renderWidth, int renderHeight, double minX, double minY, double dX, double dY){
+    public GpuInterface(int renderWidth, int renderHeight, double minX, double minY, double dX, double dY, int iterations){
         rWidth = renderWidth;
         rHeight = renderHeight;
         this.minX = minX;
         this.minY = minY;
         this.dX = dX;
         this.dY = dY;
+        maxIterations = iterations;
 
         int numWide = renderWidth/TILE_SIZE;
         int numHigh = renderHeight/TILE_SIZE;
@@ -65,33 +66,34 @@ public class GpuInterface {
 
     public void saveRender(File file) {
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, iterationsTexture);
-        int format = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_COMPONENTS);
-        int width = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
-        int height = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
-        int channels = 0;
-        int byteCount = 0;
-        switch (format) {
-            case GL11.GL_RGB:
-                channels = 3;
-                break;
-            case GL11.GL_RGBA:
-            default:
-                channels = 4;
-                break;
-        }
-        byteCount = width * height;
+        int byteCount = rWidth * rHeight;
         IntBuffer bytes = BufferUtils.createIntBuffer(byteCount);
-        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage image = new BufferedImage(rWidth, rHeight, BufferedImage.TYPE_INT_RGB);
         GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL30.GL_RED_INTEGER, GL11.GL_INT, bytes);
         final String ext = "PNG";
-        for (int x = 0; x < width; x++) {
-            for (int y = 0; y < height; y++) {
-                int i = (x + (width * y));
-//                System.out.println(x+","+y+" "+bytes.get(i));
-                int r = bytes.get(i) & 0xFF;
-                int g = (bytes.get(i) << 8) & 0xFF;
-                int b = (bytes.get(i) << 16) & 0xFF;
-                image.setRGB(x, height - (y + 1), (0xFF << 24) | (r << 16) | (g << 8) | b);
+        for (int x = 0; x < rWidth; x++) {
+            for (int y = 0; y < rHeight; y++) {
+                int i = (x + (rWidth * y));
+                int color = (int) (1280 * ((float)bytes.get(i) / (float)maxIterations));
+//                System.out.println(bytes.get(i) + " " + color);
+
+                if(color < 256){
+                } else if(color >= 256 && color < 512){
+                    color = (color & 0xFF) << 8 | 0xFF;
+                } else if(color >= 512 && color < 768){
+                    color = (0xFF - (color & 0xFF)) | 0xFF00;
+                } else if(color >= 768 && color < 1024){
+                    color = (color & 0xFF) << 16 | 0xFF00;
+                } else if(color >= 1024 && color < 1280) {
+                    color = (0xFF - (color & 0xFF)) << 8 | 0xFF0000;
+                } else {
+                    color = 0;
+                }
+//                int r = bytes.get(i) & 0xFF;
+//                int g = (bytes.get(i) << 8) & 0xFF;
+//                int b = (bytes.get(i) << 16) & 0xFF;
+//                image.setRGB(x, height - (y + 1), (0xFF << 24) | (r << 16) | (g << 8) | b);
+                image.setRGB(x, rHeight - (y + 1), color);
             }
         }
         try {
@@ -103,11 +105,6 @@ public class GpuInterface {
 
     public void iterate(int maxIters){
         GL20.glUseProgram(csProgramId);
-//        for(int i = 0; i < tileTextures.limit(); i++){
-//            GL42.glBindImageTexture(0, tileTextures.get(i), 0, false, 0, GL15.GL_WRITE_ONLY, GL30.GL_RGBA32F);
-//        }
-
-//        GL42.glBindImageTexture(0, debugTexture, 0, false, 0, GL15.GL_READ_WRITE, GL11.GL_RGBA8);
         GL42.glBindImageTexture(0, complexComponentTexture, 0, false, 0, GL15.GL_READ_WRITE, GL30.GL_RG32F);
         GL42.glBindImageTexture(1, iterationsTexture, 0, false, 0, GL15.GL_READ_WRITE, GL30.GL_R32I);
         GL20.glUniform1i(2, maxIters);
@@ -127,15 +124,22 @@ public class GpuInterface {
         GL42.glMemoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     }
 
+    public void deleteComplexTextures(){
+        GL11.glDeleteTextures(complexComponentTexture);
+    }
+
     public void render(){
         GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
         GL20.glUseProgram(renderProgramId);
+
+        GL20.glUniform1i(1, maxIterations);
+
         GL30.glBindVertexArray(quadVAO);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, iterationsTexture);
-        GL13.glActiveTexture(GL13.GL_TEXTURE0+1);
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, complexComponentTexture);
+
         GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, 6);
+
         GL30.glBindVertexArray(0);
         GL20.glUseProgram(0);
 
@@ -248,7 +252,6 @@ public class GpuInterface {
             System.err.println("Error: " + error );
         }
 
-        IntBuffer buffer = null;
         GL13.glActiveTexture(GL13.GL_TEXTURE1);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, iterationsTexture);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
