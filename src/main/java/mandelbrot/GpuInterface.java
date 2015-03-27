@@ -128,11 +128,12 @@ public class GpuInterface {
         GL11.glDeleteTextures(complexComponentTexture);
     }
 
-    public void render(){
+    public void render(int iters){
         GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
         GL20.glUseProgram(renderProgramId);
 
-        GL20.glUniform1i(1, maxIterations);
+        GL20.glUniform1i(1, iters);
+        GL20.glUniform2i(2, width/2, height/2);
 
         GL30.glBindVertexArray(quadVAO);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
@@ -144,7 +145,7 @@ public class GpuInterface {
         GL20.glUseProgram(0);
 
         Display.update();
-        Display.sync(60);
+        Display.sync(10);
     }
 
     private void createDisplay(){
@@ -156,7 +157,7 @@ public class GpuInterface {
 //            GL11.glEnable(GL11.GL_DEPTH_TEST);
 //            GL11.glDepthFunc(GL11.GL_LEQUAL);
             GL11.glViewport(0, 0, width, height);
-            GL11.glClearColor(0, 0, 0, 0);
+            GL11.glClearColor(1, 1, 1, 0);
             ARBDebugOutput.glDebugMessageCallbackARB(new ARBDebugOutputCallback());
             Keyboard.create();
         } catch (LWJGLException e) {

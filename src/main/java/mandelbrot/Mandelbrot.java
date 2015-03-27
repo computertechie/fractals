@@ -85,33 +85,30 @@ public class Mandelbrot {
         CpuProfiler.startTask("Main");
         System.setProperty("org.lwjgl.librarypath", "E:\\Documents\\Projects\\fractals\\build\\natives\\windows");
 
-		int renderWidth = 1024, renderHeight = 1024, iterations = 10000;
+		int renderWidth = 8192, renderHeight = 8192, iterations = 1000;
 		double mMinY = -1, mMaxY = 1, mMinX = -1, mMaxX = 1, mDY, mDX;
 
 		mDX = (mMaxX - mMinX) / renderWidth;
 		mDY = (mMaxY - mMinY) / renderHeight;
 
-
         GpuInterface gpuInterface = new GpuInterface(renderWidth, renderHeight, mMinX, mMinY, mDX, mDY, iterations);
 
-        File f;
         CpuProfiler.startTask("iterate");
         for(int i = 0; i<iterations; i++) {
-			System.out.println(i);
 			gpuInterface.iterate(i);
-//			if(i%10==0) {
-				gpuInterface.render();
-//			}
+			gpuInterface.render(i);
+			Display.setTitle("Iteration: "+i);
         }
 		GL11.glFinish();
 		CpuProfiler.endTask();
 
+        File f;
 		f = new File("./last/tile_"+renderHeight+"_"+renderWidth+"_"+iterations+".png");
 		f.mkdirs();
-		gpuInterface.saveRender(f);
+//		gpuInterface.saveRender(f);
 
         while(!Display.isCloseRequested()){
-            gpuInterface.render();
+            gpuInterface.render(iterations);
         }
         CpuProfiler.endTask();
 	}
