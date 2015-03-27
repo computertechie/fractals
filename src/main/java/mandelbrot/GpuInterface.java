@@ -25,11 +25,20 @@ public class GpuInterface {
     private int csId, vsId, fsId, csProgramId, renderProgramId, quadVAO;
     private int currentTile = 0, workgroupSize_x, workgroupSize_y;
     private int debugTexture;
-    private int rWidth, rHeight;
 
-    public GpuInterface(int renderWidth, int renderHeight){
+    private int complexComponentTexture, iterationsTexture;
+
+    private int rWidth, rHeight;
+    private double minX, minY, dX, dY;
+
+    public GpuInterface(int renderWidth, int renderHeight, double minX, double minY, double dX, double dY){
         rWidth = renderWidth;
         rHeight = renderHeight;
+        this.minX = minX;
+        this.minY = minY;
+        this.dX = dX;
+        this.dY = dY;
+
         int numWide = renderWidth/TILE_SIZE;
         int numHigh = renderHeight/TILE_SIZE;
 
@@ -46,7 +55,7 @@ public class GpuInterface {
 
         GL11.glGenTextures(tileTextures);
         debugTexture = GL11.glGenTextures();
-        createTexture(debugTexture);
+        createTextures();
 
         IntBuffer workgroupSize = BufferUtils.createIntBuffer(3);
         GL20.glGetProgram(csProgramId, GL43.GL_COMPUTE_WORK_GROUP_SIZE, workgroupSize);
@@ -55,7 +64,7 @@ public class GpuInterface {
     }
 
     public void saveRender(File file) {
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, debugTexture);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, iterationsTexture);
         int format = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_COMPONENTS);
         int width = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
         int height = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
@@ -70,17 +79,18 @@ public class GpuInterface {
                 channels = 4;
                 break;
         }
-        byteCount = width * height * channels;
-        ByteBuffer bytes = BufferUtils.createByteBuffer(byteCount);
+        byteCount = width * height;
+        IntBuffer bytes = BufferUtils.createIntBuffer(byteCount);
         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-        GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, bytes);
+        GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL30.GL_RED_INTEGER, GL11.GL_INT, bytes);
         final String ext = "PNG";
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
-                int i = (x + (width * y)) * channels;
+                int i = (x + (width * y));
+//                System.out.println(x+","+y+" "+bytes.get(i));
                 int r = bytes.get(i) & 0xFF;
-                int g = bytes.get(i + 1) & 0xFF;
-                int b = bytes.get(i + 2) & 0xFF;
+                int g = (bytes.get(i) << 8) & 0xFF;
+                int b = (bytes.get(i) << 16) & 0xFF;
                 image.setRGB(x, height - (y + 1), (0xFF << 24) | (r << 16) | (g << 8) | b);
             }
         }
@@ -91,36 +101,41 @@ public class GpuInterface {
         }
     }
 
-    public void iterate(){
+    public void iterate(int maxIters){
         GL20.glUseProgram(csProgramId);
 //        for(int i = 0; i < tileTextures.limit(); i++){
 //            GL42.glBindImageTexture(0, tileTextures.get(i), 0, false, 0, GL15.GL_WRITE_ONLY, GL30.GL_RGBA32F);
 //        }
 
-        GL42.glBindImageTexture(0, debugTexture, 0, false, 0, GL15.GL_READ_WRITE, GL11.GL_RGBA8);
+//        GL42.glBindImageTexture(0, debugTexture, 0, false, 0, GL15.GL_READ_WRITE, GL11.GL_RGBA8);
+        GL42.glBindImageTexture(0, complexComponentTexture, 0, false, 0, GL15.GL_READ_WRITE, GL30.GL_RG32F);
+        GL42.glBindImageTexture(1, iterationsTexture, 0, false, 0, GL15.GL_READ_WRITE, GL30.GL_R32I);
+        GL20.glUniform1i(2, maxIters);
         int error = GL11.glGetError();
         if(error!=0){
-            System.err.println("Error: " + error );
+            System.err.println("Error: " + error);
         }
         GL43.glDispatchCompute(rHeight/workgroupSize_x, rWidth/workgroupSize_y, 1);
-        GL42.glBindImageTexture(0, 0, 0, false, 0, GL15.GL_READ_WRITE, GL11.GL_RGBA8);
+        GL42.glBindImageTexture(0, 0, 0, false, 0, GL15.GL_READ_WRITE, GL30.GL_RG32F);
+        GL42.glBindImageTexture(1, 0, 0, false, 0, GL15.GL_READ_WRITE, GL30.GL_R32I);
         error = GL11.glGetError();
         if(error!=0){
             System.err.println("Error2: " + error );
         }
 
         GL20.glUseProgram(0);
+        GL42.glMemoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     }
 
     public void render(){
-        GL42.glMemoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
         GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
         GL20.glUseProgram(renderProgramId);
         GL30.glBindVertexArray(quadVAO);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, debugTexture);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, iterationsTexture);
+        GL13.glActiveTexture(GL13.GL_TEXTURE0+1);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, complexComponentTexture);
         GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, 6);
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
         GL30.glBindVertexArray(0);
         GL20.glUseProgram(0);
 
@@ -147,9 +162,9 @@ public class GpuInterface {
     }
 
     private void initialiseShaders(){
-        csId = loadShader(this.getClass().getResource("/assets/mandelbrot.compute"), GL43.GL_COMPUTE_SHADER);
-        vsId = loadShader(this.getClass().getResource("/assets/quad.vs"), GL20.GL_VERTEX_SHADER);
-        fsId = loadShader(this.getClass().getResource("/assets/quad.fs"), GL20.GL_FRAGMENT_SHADER);
+        csId = loadShader(this.getClass().getResource("/assets/mandelbrot_compute.glsl"), GL43.GL_COMPUTE_SHADER);
+        vsId = loadShader(this.getClass().getResource("/assets/quad_vs.glsl"), GL20.GL_VERTEX_SHADER);
+        fsId = loadShader(this.getClass().getResource("/assets/quad_fs.glsl"), GL20.GL_FRAGMENT_SHADER);
 
         csProgramId = GL20.glCreateProgram();
         GL20.glAttachShader(csProgramId, csId);
@@ -159,6 +174,12 @@ public class GpuInterface {
             System.out.println(GL20.glGetProgramInfoLog(csProgramId, 1024));
             throw new RuntimeException("Link failed");
         }
+        GL20.glUseProgram(csProgramId);
+        //vec2 dx_dy
+        GL20.glUniform2f(3, (float) dX, (float)dY);
+        //vec2 minX_minY
+        GL20.glUniform2f(4, (float)minX, (float)minY);
+        GL20.glUseProgram(0);
 
         renderProgramId = GL20.glCreateProgram();
         GL20.glAttachShader(renderProgramId, vsId);
@@ -209,14 +230,36 @@ public class GpuInterface {
         return shaderID;
     }
 
-    private void createTexture(int texID){
+    private void createTextures(){
+        complexComponentTexture = GL11.glGenTextures();
+        iterationsTexture = GL11.glGenTextures();
+
+        ByteBuffer black = null;
+
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, texID);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, complexComponentTexture);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        ByteBuffer black = null;
-        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0,  GL11.GL_RGBA8, rWidth, rHeight, 0, GL11.GL_RGBA, GL11.GL_FLOAT, black);
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0,  GL30.GL_RG32F, rWidth, rHeight, 0, GL11.GL_RGBA, GL11.GL_FLOAT, black);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+
+        int error = GL11.glGetError();
+        if(error!=0){
+            System.err.println("Error: " + error );
+        }
+
+        IntBuffer buffer = null;
+        GL13.glActiveTexture(GL13.GL_TEXTURE1);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, iterationsTexture);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0,  GL30.GL_R32I, rWidth, rHeight, 0, GL30.GL_RED_INTEGER, GL11.GL_INT, black);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+
+        error = GL11.glGetError();
+        if(error!=0){
+            System.err.println("Erro2r: " + error );
+        }
     }
 
     private int quadFullScreenVao() {

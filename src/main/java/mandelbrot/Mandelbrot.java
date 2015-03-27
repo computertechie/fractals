@@ -1,6 +1,7 @@
 package mandelbrot;
 
 import org.lwjgl.opengl.Display;
+import org.lwjgl.opengl.GL11;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -21,15 +22,14 @@ public class Mandelbrot {
 	private double minX;
 	private double minY;
 
-	public Mandelbrot(double minX, double maxX, double minY, double maxY,
-			int width, int height, int maxIters) {
+	public Mandelbrot(double minX, double maxX, double minY, double maxY, int width, int height, int maxIters) {
 
-        System.out.println(this.getClass().getResource("/assets/mandelbrot.compute"));
 
 		this.dx = (maxX - minX) / width;
 		this.dy = (maxY - minY) / height;
+		System.out.println("dx: "+dx+" dy: "+dy);
 
-		this.minX = minX - this.dx;
+//		this.minX = minX - this.dx;
 
 		this.width = width;
 		this.height = height;
@@ -71,7 +71,7 @@ public class Mandelbrot {
 				ex.shutdown();
 				ex.awaitTermination(1, TimeUnit.HOURS);
 				
-				File f =  new File("./last/tile_" + xTileNum + "_" + yTileNum + ".png");
+				File f =  new File("./last/1tile_" + xTileNum + "_" + yTileNum + ".png");
 				f.mkdirs();
 				
 				this.saveImage("png", f, image);
@@ -85,43 +85,47 @@ public class Mandelbrot {
         CpuProfiler.startTask("Main");
         System.setProperty("org.lwjgl.librarypath", "E:\\Documents\\Projects\\fractals\\build\\natives\\windows");
 
-        GpuInterface gpuInterface = new GpuInterface(2048, 2048);
+		int renderWidth = 8096, renderHeight = 8096;
+		double mMinY = -1, mMaxY = 1, mMinX = -1, mMaxX = 1, mDY, mDX;
+
+		mDX = (mMaxX - mMinX) / renderWidth;
+		mDY = (mMaxY - mMinY) / renderHeight;
+
+
+        GpuInterface gpuInterface = new GpuInterface(renderWidth, renderHeight, mMinX, mMinY, mDX, mDY);
 
         File f;
         CpuProfiler.startTask("iterate");
-//        for(int i = 0; i<10000; i++) {
-            gpuInterface.iterate();
+        for(int i = 0; i<10000; i++) {
+            gpuInterface.iterate(i);
+        }
+		GL11.glFinish();
+		CpuProfiler.endTask();
 
-            f = new File("./last/tile1.png");
-            f.mkdirs();
-            gpuInterface.saveRender(f);
-            gpuInterface.render();
-//            System.out.println(i);
-//        }
-        CpuProfiler.endTask();
+		f = new File("./last/tile3.png");
+		f.mkdirs();
+		gpuInterface.saveRender(f);
 
         while(!Display.isCloseRequested()){
             gpuInterface.render();
         }
 
-//		int width = 3000;
-//		int height = 3000;
-//		int maxIters = 500;
+		int width = 3000;
+		int height = 3000;
+		int maxIters = 128;
 
 //		double minX = 1.00405;
 //		double maxX = 1.0040625;
 //		double minY = 1.02995;
 //		double maxY = 1.0299625;
 
-//		double minX = -2 ;
-//		double maxX = 2;
-//		double minY = -2;
-//		double maxY = 2;
+		double minX = -1;
+		double maxX = 1;
+		double minY = -1;
+		double maxY = 1;
 
-//        CpuProfiler.startTask("Mandelbrot creation.");
-//		Mandelbrot m = new Mandelbrot(minX, maxX, minY, maxY, width, height,
-//				maxIters);
-//        CpuProfiler.endTask();
+        CpuProfiler.startTask("Mandelbrot creation.");
+//		Mandelbrot m = new Mandelbrot(minX, maxX, minY, maxY, width, height, maxIters);
 //		try {
 //            CpuProfiler.startTask("m.render()");
 //			m.render();
@@ -134,11 +138,7 @@ public class Mandelbrot {
 //			// TODO Auto-generated catch block
 //			e.printStackTrace();
 //		}
-
-//		System.out.println("Done");
-		//System.out.println(0xFFFFFF);
-//		System.out.println(m.dx);
-//		System.out.println(m.dy);
+        CpuProfiler.endTask();
         CpuProfiler.endTask();
 	}
 }
