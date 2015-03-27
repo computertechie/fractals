@@ -105,7 +105,7 @@ public class GpuInterface {
 
     public void iterate(int maxIters){
         GL20.glUseProgram(csProgramId);
-        GL42.glBindImageTexture(0, complexComponentTexture, 0, false, 0, GL15.GL_READ_WRITE, GL30.GL_RG16F);
+        GL42.glBindImageTexture(0, complexComponentTexture, 0, false, 0, GL15.GL_READ_WRITE, GL30.GL_RG32F);
         GL42.glBindImageTexture(1, iterationsTexture, 0, false, 0, GL15.GL_READ_WRITE, GL30.GL_R32I);
         GL20.glUniform1i(2, maxIters);
         int error = GL11.glGetError();
@@ -113,7 +113,7 @@ public class GpuInterface {
             System.err.println("Error: " + error);
         }
         GL43.glDispatchCompute(rHeight/workgroupSize_x, rWidth/workgroupSize_y, 1);
-        GL42.glBindImageTexture(0, 0, 0, false, 0, GL15.GL_READ_WRITE, GL30.GL_RG16F);
+        GL42.glBindImageTexture(0, 0, 0, false, 0, GL15.GL_READ_WRITE, GL30.GL_RG32F);
         GL42.glBindImageTexture(1, 0, 0, false, 0, GL15.GL_READ_WRITE, GL30.GL_R32I);
         error = GL11.glGetError();
         if(error!=0){
@@ -245,7 +245,7 @@ public class GpuInterface {
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, complexComponentTexture);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0,  GL30.GL_RG16F, rWidth, rHeight, 0, GL11.GL_RGBA, GL11.GL_FLOAT, black);
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0,  GL30.GL_RG32F, rWidth, rHeight, 0, GL11.GL_RGBA, GL11.GL_FLOAT, black);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
 
         int error = GL11.glGetError();
