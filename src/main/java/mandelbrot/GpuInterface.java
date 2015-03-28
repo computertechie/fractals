@@ -69,7 +69,9 @@ public class GpuInterface {
         int byteCount = rWidth * rHeight;
         IntBuffer bytes = BufferUtils.createIntBuffer(byteCount);
         BufferedImage image = new BufferedImage(rWidth, rHeight, BufferedImage.TYPE_INT_RGB);
+        CpuProfiler.startTask("VRAM->RAM");
         GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL30.GL_RED_INTEGER, GL11.GL_INT, bytes);
+        CpuProfiler.endTask();
         final String ext = "PNG";
         for (int x = 0; x < rWidth; x++) {
             for (int y = 0; y < rHeight; y++) {
@@ -148,14 +150,30 @@ public class GpuInterface {
         Display.sync(20);
     }
 
+    public void quickRender(int iters){
+        GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GL20.glUseProgram(renderProgramId);
+
+        GL20.glUniform1i(1, iters);
+        GL20.glUniform2i(2, width/2, height/2);
+
+        GL30.glBindVertexArray(quadVAO);
+        GL13.glActiveTexture(GL13.GL_TEXTURE0);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, iterationsTexture);
+
+        GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, 6);
+
+        GL30.glBindVertexArray(0);
+        GL20.glUseProgram(0);
+
+        Display.update();
+    }
+
     private void createDisplay(){
         try {
             Display.setDisplayMode(new DisplayMode(width, height));
-//            Display.create(new PixelFormat(), new ContextAttribs(3, 2).withProfileCore(true).withForwardCompatible(true));
             Display.create(new PixelFormat(), new ContextAttribs(4,3).withProfileCore(true).withForwardCompatible(true).withDebug(true));
             Display.setResizable(true);
-//            GL11.glEnable(GL11.GL_DEPTH_TEST);
-//            GL11.glDepthFunc(GL11.GL_LEQUAL);
             GL11.glViewport(0, 0, width, height);
             GL11.glClearColor(1, 1, 1, 0);
             ARBDebugOutput.glDebugMessageCallbackARB(new ARBDebugOutputCallback());

@@ -13,8 +13,6 @@ import java.util.concurrent.TimeUnit;
 import javax.imageio.ImageIO;
 
 public class Mandelbrot {
-	private BufferedImage I;
-
 	private double dx, dy, maxIters;
 
 	private int width;
@@ -48,7 +46,7 @@ public class Mandelbrot {
 		double cY;
 		ExecutorService ex;
 
-		int[] tileSize = {5000, 5000}; //X, Y
+		int[] tileSize = {8000, 8000}; //X, Y
 		if(this.height < tileSize[1]){
 			tileSize[1] = this.height;
 		}
@@ -71,7 +69,7 @@ public class Mandelbrot {
 				ex.shutdown();
 				ex.awaitTermination(1, TimeUnit.HOURS);
 				
-				File f =  new File("./last/1tile_" + xTileNum + "_" + yTileNum + ".png");
+				File f =  new File("./last/cpu_tile_" + xTileNum + "_" + yTileNum + ".png");
 				f.mkdirs();
 				
 				this.saveImage("png", f, image);
@@ -79,39 +77,5 @@ public class Mandelbrot {
 			}
             CpuProfiler.endTask();
 		}
-	}
-
-	public static void main(String[] args) {
-        CpuProfiler.startTask("Main");
-        System.setProperty("org.lwjgl.librarypath", "E:\\Documents\\Projects\\fractals\\build\\natives\\windows");
-
-		int renderWidth = 8192, renderHeight = 8192, iterations = 1000;
-		double mMinY = -1, mMaxY = 1, mMinX = -1, mMaxX = 1, mDY, mDX;
-
-		mDX = (mMaxX - mMinX) / renderWidth;
-		mDY = (mMaxY - mMinY) / renderHeight;
-
-        GpuInterface gpuInterface = new GpuInterface(renderWidth, renderHeight, mMinX, mMinY, mDX, mDY, iterations);
-
-        CpuProfiler.startTask("iterate");
-        for(int i = 0; i<iterations; i++) {
-			gpuInterface.iterate(i);
-			gpuInterface.render(i);
-			Display.setTitle("Iteration: "+i);
-        }
-		GL11.glFinish();
-		CpuProfiler.endTask();
-
-		CpuProfiler.startTask("Saving.");
-        File f;
-		f = new File("./last/tile_"+renderHeight+"_"+renderWidth+"_"+iterations+".png");
-		f.mkdirs();
-		gpuInterface.saveRender(f);
-		CpuProfiler.endTask();
-
-        while(!Display.isCloseRequested()){
-            gpuInterface.render(iterations);
-        }
-        CpuProfiler.endTask();
 	}
 }
