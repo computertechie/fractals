@@ -10,13 +10,15 @@ import java.io.IOException;
  * Created by Pepper on 3/27/2015.
  */
 public class FractalRenderer {
+    public static final int TILE_SIZE = 8192;
+
     public static void main(String[] args) {
-        boolean mandel = false;
+        boolean mandel = true;
         CpuProfiler.startTask("Main");
         System.setProperty("org.lwjgl.librarypath", "E:\\Documents\\Projects\\fractals\\build\\natives\\windows");
 
-        int renderWidth = 8192, renderHeight = 8192, iterations = 1000;
-        double mMinY = -1, mMaxY = 1, mMinX = -1, mMaxX = 1, mDY, mDX;
+        int renderWidth = 16384, renderHeight = 16384, iterations = 1000;
+        double mMinY = -2, mMaxY = 2, mMinX = -2, mMaxX = 2, mDY, mDX;
 
         mDX = (mMaxX - mMinX) / renderWidth;
         mDY = (mMaxY - mMinY) / renderHeight;
@@ -40,8 +42,9 @@ public class FractalRenderer {
             CpuProfiler.startTask("iterate");
             for(int i = 0; i<iterations; i++) {
                 gpuInterface.iterate(i);
-                gpuInterface.quickRender(i);
-                Display.setTitle("Iteration: " + i);
+//                gpuInterface.quickRender(i);
+//                gpuInterface.render(i);
+//                Display.setTitle("Iteration: " + i);
             }
             GL11.glFinish();
             CpuProfiler.endTask();

@@ -1,8 +1,5 @@
 package mandelbrot;
 
-import org.lwjgl.opengl.Display;
-import org.lwjgl.opengl.GL11;
-
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -46,7 +43,7 @@ public class Mandelbrot {
 		double cY;
 		ExecutorService ex;
 
-		int[] tileSize = {8000, 8000}; //X, Y
+		int[] tileSize = {FractalRenderer.TILE_SIZE, FractalRenderer.TILE_SIZE}; //X, Y
 		if(this.height < tileSize[1]){
 			tileSize[1] = this.height;
 		}
