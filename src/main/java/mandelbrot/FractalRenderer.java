@@ -15,7 +15,7 @@ public class FractalRenderer {
         CpuProfiler.startTask("Main");
         System.setProperty("org.lwjgl.librarypath", "E:\\Documents\\Projects\\fractals\\build\\natives\\windows");
 
-        int renderWidth = 32768, renderHeight = 32768, iterations = 100;
+        int renderWidth = 65536, renderHeight = 65536, iterations = 100;
         double mMinY = -2, mMaxY = 2, mMinX = -2, mMaxX = 2, mDY, mDX;
 
         mDX = (mMaxX - mMinX) / renderWidth;

@@ -21,7 +21,7 @@ import java.util.Arrays;
  * Created by Pepper on 3/24/2015.
  */
 public class GpuInterface {
-    public static final int TILE_SIZE = 4096;
+    public static final int TILE_SIZE = 8192;
 
     private int width = 1280, height = 720;
     private int csId, vsId, fsId, csProgramId, renderProgramId, quadVAO;
@@ -188,6 +188,7 @@ public class GpuInterface {
 
         for(PngReader reader : rowTileReaders)
             reader.end();
+        compositeWriter.end();
     }
 
     private void iterateAndRender(int row, int column){
