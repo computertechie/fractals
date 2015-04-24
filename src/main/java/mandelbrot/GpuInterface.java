@@ -1,34 +1,40 @@
 package mandelbrot;
 
+import ar.com.hjg.pngj.*;
+import ar.com.hjg.pngj.chunks.ChunkLoadBehaviour;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.LWJGLException;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.opengl.*;
+import org.lwjgl.opengl.DisplayMode;
 
 import javax.imageio.ImageIO;
+import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
+import java.util.Arrays;
 
 /**
  * Created by Pepper on 3/24/2015.
  */
 public class GpuInterface {
+    public static final int TILE_SIZE = 4096;
+
     private int width = 1280, height = 720;
     private int csId, vsId, fsId, csProgramId, renderProgramId, quadVAO;
-    private int currentTile = 0, workgroupSize_x, workgroupSize_y, numTilesX, numTilesY;
-
+    private int workgroupSize_x, workgroupSize_y, numTilesX, numTilesY;
     private int complexComponentTexture, iterationsTexture;
-
     private int rWidth, rHeight, maxIterations;
-    private double minX, minY, dX, dY;
+    private double minX, minY, dX, dY, tileViewingSizeX, tileViewingSizeY;
 
-    public GpuInterface(int renderWidth, int renderHeight, double minX, double minY, double dX, double dY, int iterations){
+    private long startTime = System.currentTimeMillis();
+
+    private File[][] tileFiles;
+
+    public GpuInterface(int renderWidth, int renderHeight, double minX, double minY, double maxX, double maxY, double dX, double dY, int iterations){
         rWidth = renderWidth;
         rHeight = renderHeight;
         this.minX = minX;
@@ -37,20 +43,23 @@ public class GpuInterface {
         this.dY = dY;
         maxIterations = iterations;
 
-        int numWide = renderWidth/FractalRenderer.TILE_SIZE;
-        int numHigh = renderHeight/FractalRenderer.TILE_SIZE;
 
-        if(renderWidth % FractalRenderer.TILE_SIZE > 0)
-            numWide++;
-        if(renderHeight% FractalRenderer.TILE_SIZE > 0)
-            numHigh++;
+        numTilesY = renderWidth/TILE_SIZE;
+        tileViewingSizeY = (maxY - minY) / numTilesY;
 
+        numTilesX = renderHeight/TILE_SIZE;
+        tileViewingSizeX = (maxX - minX) / numTilesX;
+
+        if(renderWidth % TILE_SIZE > 0)
+            numTilesY++;
+        if(renderHeight % TILE_SIZE > 0)
+            numTilesX++;
+
+        tileFiles = new File[numTilesX][numTilesY];
 
         createDisplay();
         initialiseShaders();
         quadVAO = quadFullScreenVao();
-
-        createTextures();
 
         IntBuffer workgroupSize = BufferUtils.createIntBuffer(3);
         GL20.glGetProgram(csProgramId, GL43.GL_COMPUTE_WORK_GROUP_SIZE, workgroupSize);
@@ -58,20 +67,73 @@ public class GpuInterface {
         workgroupSize_y = workgroupSize.get(1);
     }
 
-    public void saveRender(File file) {
+    public void renderFractalAndSave(){
+        CpuProfiler.startTask("Render tiles and save");
+        for(int row = 0; row < numTilesX; row++){
+            for(int column = 0; column < numTilesY; column++){
+                CpuProfiler.startTask(String.format("Render and save tile %d %d", row, column));
+                renderTileAndSave(row, column);
+                CpuProfiler.endTask();
+            }
+        }
+
+        CpuProfiler.startTask("Create composite image");
+        saveComposite();
+        CpuProfiler.endTask();
+        CpuProfiler.endTask();
+    }
+
+    private void renderTileAndSave(int row, int column) {
+        CpuProfiler.startTask("Create textures");
+        createTextures();
+        CpuProfiler.endTask();
+
+        CpuProfiler.startTask("Iterate");
+        iterate(row, column);
+//        iterateAndRender(row, column);
+        CpuProfiler.endTask();
+
+
+        CpuProfiler.startTask("Save tile image");
+        File tileFile = new File(String.format("./last/%d/%d_%d_%d_%d.png", startTime, rHeight, maxIterations, row, column));
+        tileFile.getParentFile().mkdirs();
+        if(!tileFile.exists()) {
+            try {
+                tileFile.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        tileFiles[row][column] = tileFile;
+        try {
+            saveRender(tileFile);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        CpuProfiler.endTask();
+
+        CpuProfiler.startTask("Delete textures");
+        deleteTextures();
+        CpuProfiler.endTask();
+    }
+
+    private void saveRender(File file) throws FileNotFoundException {
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, iterationsTexture);
-        int byteCount = rWidth * rHeight;
+        int byteCount = TILE_SIZE * TILE_SIZE;
         IntBuffer bytes = BufferUtils.createIntBuffer(byteCount);
-        BufferedImage image = new BufferedImage(rWidth, rHeight, BufferedImage.TYPE_INT_RGB);
         CpuProfiler.startTask("VRAM->RAM");
         GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL30.GL_RED_INTEGER, GL11.GL_INT, bytes);
         CpuProfiler.endTask();
-        final String ext = "PNG";
-        for (int x = 0; x < rWidth; x++) {
-            for (int y = 0; y < rHeight; y++) {
-                int i = (x + (rWidth * y));
+
+        OutputStream output = new FileOutputStream(file);
+        PngWriter writer = new PngWriter(output, new ImageInfo(TILE_SIZE, TILE_SIZE, 8, false));
+        ImageLineInt imageLine;
+
+        for (int x = 0; x < TILE_SIZE; x++) {
+            imageLine = new ImageLineInt(writer.imgInfo);
+            for (int y = 0; y < TILE_SIZE; y++) {
+                int i = (x + (TILE_SIZE * y));
                 int color = (int) (1280 * ((float)bytes.get(i) / (float)maxIterations));
-//                System.out.println(bytes.get(i) + " " + color);
 
                 if(color < 256){
                 } else if(color >= 256 && color < 512){
@@ -85,43 +147,109 @@ public class GpuInterface {
                 } else {
                     color = 0;
                 }
-//                int r = bytes.get(i) & 0xFF;
-//                int g = (bytes.get(i) << 8) & 0xFF;
-//                int b = (bytes.get(i) << 16) & 0xFF;
-//                image.setRGB(x, height - (y + 1), (0xFF << 24) | (r << 16) | (g << 8) | b);
-                image.setRGB(x, rHeight - (y + 1), color);
+
+                ImageLineHelper.setPixelRGB8(imageLine, y, color);
+            }
+            writer.writeRow(imageLine);
+        }
+        writer.end();
+    }
+
+    private void saveComposite(){
+        PngReader[] rowTileReaders = new PngReader[numTilesX];
+        PngReader tileReader = new PngReader(tileFiles[0][0]);
+
+        ImageInfo tileInfo, compositeImageInfo;
+        tileInfo = tileReader.imgInfo;
+        compositeImageInfo = new ImageInfo(tileInfo.cols * numTilesX, tileInfo.rows * numTilesY, tileInfo.bitDepth, false);
+
+        PngWriter compositeWriter = new PngWriter(new File(String.format("last/%d/%d_%d_full.png", startTime, rHeight, maxIterations)), compositeImageInfo);
+
+        tileReader.end();
+
+        ImageLineInt compositeLine = new ImageLineInt(compositeImageInfo);
+        int compositeRow = 0;
+        for(int yTile = 0; yTile < numTilesY; yTile++){
+            Arrays.fill(compositeLine.getScanline(), 0);
+
+            for(int xTile = 0; xTile < numTilesX; xTile++){
+                rowTileReaders[xTile] = new PngReader(tileFiles[yTile][xTile]);
+                rowTileReaders[xTile].setChunkLoadBehaviour(ChunkLoadBehaviour.LOAD_CHUNK_NEVER);
+            }
+
+            for(int tileRow = 0; tileRow < tileInfo.rows; tileRow++, compositeRow++){
+                for(int xTile = 0; xTile < numTilesX; xTile++){
+                    ImageLineInt tileLine = (ImageLineInt) rowTileReaders[xTile].readRow(tileRow);
+                    System.arraycopy(tileLine.getScanline(), 0, compositeLine.getScanline(), tileLine.getScanline().length * xTile, tileLine.getScanline().length);
+                }
+                compositeWriter.writeRow(compositeLine);
             }
         }
-        try {
-            ImageIO.write(image, ext, file);
-        } catch (IOException ex) {
-            ex.printStackTrace();
+
+        for(PngReader reader : rowTileReaders)
+            reader.end();
+    }
+
+    private void iterateAndRender(int row, int column){
+        for(int i = 0; i < maxIterations; i++) {
+            GL20.glUseProgram(csProgramId);
+            GL42.glBindImageTexture(0, complexComponentTexture, 0, false, 0, GL15.GL_READ_WRITE, GL30.GL_RG32F);
+            GL42.glBindImageTexture(1, iterationsTexture, 0, false, 0, GL15.GL_READ_WRITE, GL30.GL_R16I);
+            GL20.glUniform1i(2, i);
+            GL20.glUniform2i(5, row, column);
+            int error = GL11.glGetError();
+            if (error != 0) {
+                System.err.println("Error: " + error);
+            }
+            GL43.glDispatchCompute(TILE_SIZE / workgroupSize_x, TILE_SIZE / workgroupSize_y, 1);
+            GL42.glBindImageTexture(0, 0, 0, false, 0, GL15.GL_READ_WRITE, GL30.GL_RG32F);
+            GL42.glBindImageTexture(1, 0, 0, false, 0, GL15.GL_READ_WRITE, GL30.GL_R16I);
+            error = GL11.glGetError();
+            if (error != 0) {
+                System.err.println("Error2: " + error);
+            }
+
+            GL42.glMemoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+
+            render(i);
         }
     }
 
-    public void iterate(int maxIters){
+    private void iterate(int row, int column){
         GL20.glUseProgram(csProgramId);
-        GL42.glBindImageTexture(0, complexComponentTexture, 0, false, 0, GL15.GL_READ_WRITE, GL30.GL_RG32F);
-        GL42.glBindImageTexture(1, iterationsTexture, 0, false, 0, GL15.GL_READ_WRITE, GL30.GL_R16I);
-        GL20.glUniform1i(2, maxIters);
-        int error = GL11.glGetError();
-        if(error!=0){
-            System.err.println("Error: " + error);
-        }
-        GL43.glDispatchCompute(rHeight/workgroupSize_x, rWidth/workgroupSize_y, 1);
-        GL42.glBindImageTexture(0, 0, 0, false, 0, GL15.GL_READ_WRITE, GL30.GL_RG32F);
-        GL42.glBindImageTexture(1, 0, 0, false, 0, GL15.GL_READ_WRITE, GL30.GL_R16I);
-        error = GL11.glGetError();
-        if(error!=0){
-            System.err.println("Error2: " + error );
-        }
+        for(int iteration = 0; iteration < maxIterations; iteration++) {
+            GL42.glBindImageTexture(0, complexComponentTexture, 0, false, 0, GL15.GL_READ_WRITE, GL30.GL_RG32F);
+            GL42.glBindImageTexture(1, iterationsTexture, 0, false, 0, GL15.GL_READ_WRITE, GL30.GL_R16I);
+            GL20.glUniform1i(2, iteration);
+            GL20.glUniform2i(5, row, column);
+            int error = GL11.glGetError();
+            if (error != 0) {
+                System.err.println("Error: " + error);
+            }
+            GL43.glDispatchCompute(TILE_SIZE / workgroupSize_x, TILE_SIZE / workgroupSize_y, 1);
+            GL42.glBindImageTexture(0, 0, 0, false, 0, GL15.GL_READ_WRITE, GL30.GL_RG32F);
+            GL42.glBindImageTexture(1, 0, 0, false, 0, GL15.GL_READ_WRITE, GL30.GL_R16I);
+            error = GL11.glGetError();
+            if (error != 0) {
+                System.err.println("Error2: " + error);
+            }
 
+            GL42.glMemoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        }
         GL20.glUseProgram(0);
-        GL42.glMemoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     }
 
-    public void deleteComplexTextures(){
+    public void deleteTextures() {
+        deleteComplexTextures();
+        deleteIterationTexture();
+    }
+
+    private void deleteComplexTextures(){
         GL11.glDeleteTextures(complexComponentTexture);
+    }
+
+    private void deleteIterationTexture() {
+        GL11.glDeleteTextures(iterationsTexture);
     }
 
     public void render(int iters){
@@ -179,7 +307,7 @@ public class GpuInterface {
     }
 
     private void initialiseShaders(){
-        csId = loadShader(this.getClass().getResource("/assets/mandelbrot_compute.glsl"), GL43.GL_COMPUTE_SHADER);
+        csId = loadShader(this.getClass().getResource("/assets/julia_compute.glsl"), GL43.GL_COMPUTE_SHADER);
         vsId = loadShader(this.getClass().getResource("/assets/quad_vs.glsl"), GL20.GL_VERTEX_SHADER);
         fsId = loadShader(this.getClass().getResource("/assets/quad_fs.glsl"), GL20.GL_FRAGMENT_SHADER);
 
@@ -192,10 +320,9 @@ public class GpuInterface {
             throw new RuntimeException("Link failed");
         }
         GL20.glUseProgram(csProgramId);
-        //vec2 dx_dy
         GL20.glUniform2f(3, (float) dX, (float)dY);
-        //vec2 minX_minY
-        GL20.glUniform2f(4, (float)minX, (float)minY);
+        GL20.glUniform2f(4, (float) minX, (float) minY);
+        GL20.glUniform1i(6, TILE_SIZE);
         GL20.glUseProgram(0);
 
         renderProgramId = GL20.glCreateProgram();
@@ -257,7 +384,7 @@ public class GpuInterface {
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, complexComponentTexture);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0,  GL30.GL_RG32F, rWidth, rHeight, 0, GL11.GL_RGBA, GL11.GL_FLOAT, black);
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0,  GL30.GL_RG32F, TILE_SIZE, TILE_SIZE, 0, GL11.GL_RGBA, GL11.GL_FLOAT, black);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
 
         int error = GL11.glGetError();
@@ -269,7 +396,7 @@ public class GpuInterface {
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, iterationsTexture);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0,  GL30.GL_R16I, rWidth, rHeight, 0, GL30.GL_RED_INTEGER, GL11.GL_INT, black);
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0,  GL30.GL_R16I, TILE_SIZE, TILE_SIZE, 0, GL30.GL_RED_INTEGER, GL11.GL_INT, black);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
 
         error = GL11.glGetError();

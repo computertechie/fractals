@@ -23,7 +23,6 @@ vec2 mandel(vec2 prev) {
 
       ivec2 pix = ivec2(gl_GlobalInvocationID.xy);
       imageStore(iterationsTexture, pix, imageLoad(iterationsTexture, pix)+1);
-      //imageAtomicAdd(iterationsTexture, pix, 1);
   }
 
   return prev;

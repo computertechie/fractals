@@ -10,14 +10,12 @@ import java.io.IOException;
  * Created by Pepper on 3/27/2015.
  */
 public class FractalRenderer {
-    public static final int TILE_SIZE = 8192;
-
     public static void main(String[] args) {
-        boolean mandel = true;
+        boolean mandel = false;
         CpuProfiler.startTask("Main");
         System.setProperty("org.lwjgl.librarypath", "E:\\Documents\\Projects\\fractals\\build\\natives\\windows");
 
-        int renderWidth = 16384, renderHeight = 16384, iterations = 1000;
+        int renderWidth = 32768, renderHeight = 32768, iterations = 100;
         double mMinY = -2, mMaxY = 2, mMinX = -2, mMaxX = 2, mDY, mDX;
 
         mDX = (mMaxX - mMinX) / renderWidth;
@@ -37,29 +35,12 @@ public class FractalRenderer {
         }
 
         else {
-            GpuInterface gpuInterface = new GpuInterface(renderWidth, renderHeight, mMinX, mMinY, mDX, mDY, iterations);
+            GpuInterface gpuInterface = new GpuInterface(renderWidth, renderHeight, mMinX, mMinY, mMaxX, mMaxY, mDX, mDY, iterations);
 
-            CpuProfiler.startTask("iterate");
-            for(int i = 0; i<iterations; i++) {
-                gpuInterface.iterate(i);
-//                gpuInterface.quickRender(i);
-//                gpuInterface.render(i);
-//                Display.setTitle("Iteration: " + i);
-            }
+            CpuProfiler.startTask("Create fractal");
+            gpuInterface.renderFractalAndSave();
             GL11.glFinish();
             CpuProfiler.endTask();
-
-            CpuProfiler.startTask("Saving.");
-            File f;
-            f = new File("./last/tile_"+renderHeight+"_"+renderWidth+"_"+iterations+".png");
-            f.mkdirs();
-            gpuInterface.saveRender(f);
-            CpuProfiler.endTask();
-
-            gpuInterface.deleteComplexTextures();
-            while(!Display.isCloseRequested()){
-                gpuInterface.render(iterations);
-            }
         }
         CpuProfiler.endTask();
     }
