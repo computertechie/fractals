@@ -1,7 +1,5 @@
 package mandelbrot;
 
-import java.awt.Color;
-import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -9,12 +7,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import javax.swing.JFrame;
 import javax.imageio.ImageIO;
 
 public class Mandelbrot {
-	private BufferedImage I;
-
 	private double dx, dy, maxIters;
 
 	private int width;
@@ -22,13 +17,14 @@ public class Mandelbrot {
 	private double minX;
 	private double minY;
 
-	public Mandelbrot(double minX, double maxX, double minY, double maxY,
-			int width, int height, int maxIters) {
+	public Mandelbrot(double minX, double maxX, double minY, double maxY, int width, int height, int maxIters) {
+
 
 		this.dx = (maxX - minX) / width;
 		this.dy = (maxY - minY) / height;
+		System.out.println("dx: "+dx+" dy: "+dy);
 
-		this.minX = minX - this.dx;
+//		this.minX = minX - this.dx;
 
 		this.width = width;
 		this.height = height;
@@ -47,7 +43,7 @@ public class Mandelbrot {
 		double cY;
 		ExecutorService ex;
 
-		int[] tileSize = {5000, 5000}; //X, Y
+		int[] tileSize = {FractalRenderer.TILE_SIZE, FractalRenderer.TILE_SIZE}; //X, Y
 		if(this.height < tileSize[1]){
 			tileSize[1] = this.height;
 		}
@@ -58,9 +54,9 @@ public class Mandelbrot {
 		BufferedImage image = new BufferedImage(tileSize[0], tileSize[1], BufferedImage.TYPE_INT_RGB);
 		
 		for (int xTileNum = 0; xTileNum * tileSize[0] < this.width; xTileNum++){
-			
+			CpuProfiler.startTask("xTile: "+xTileNum);
 			for (int yTileNum = 0; yTileNum * tileSize[1] < this.height; yTileNum++){
-				System.out.println("x = " + xTileNum + " y = " + yTileNum);
+			    CpuProfiler.startTask("yTile: "+yTileNum);
 				ex = Executors.newFixedThreadPool(10);
 				for (int y = 0; y < tileSize[1]; y++) {
 					cY = minY + dy * (y + tileSize[1] * yTileNum);
@@ -70,45 +66,13 @@ public class Mandelbrot {
 				ex.shutdown();
 				ex.awaitTermination(1, TimeUnit.HOURS);
 				
-				File f =  new File("./last/tile_" + xTileNum + "_" + yTileNum + ".png");
+				File f =  new File("./last/cpu_tile_" + xTileNum + "_" + yTileNum + ".png");
 				f.mkdirs();
 				
 				this.saveImage("png", f, image);
+                CpuProfiler.endTask();;
 			}
+            CpuProfiler.endTask();
 		}
-	}
-
-	public static void main(String[] args) {
-		int width = 3000;
-		int height = 3000;
-		int maxIters = 100;
-
-//		double minX = 1.00405;
-//		double maxX = 1.0040625;
-//		double minY = 1.02995;
-//		double maxY = 1.0299625;
-
-		double minX = -2 ;
-		double maxX = 2;
-		double minY = -2;
-		double maxY = 2;
-
-		Mandelbrot m = new Mandelbrot(minX, maxX, minY, maxY, width, height,
-				maxIters);
-		try {
-			m.render();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			System.err.println("Couldn't create files");
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-		System.out.println("Done");
-		//System.out.println(0xFFFFFF);
-		System.out.println(m.dx);
-		System.out.println(m.dy);
 	}
 }

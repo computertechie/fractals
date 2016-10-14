@@ -32,7 +32,6 @@ public abstract class RowCalculation implements Runnable {
 		double cX, cY;
 		
 		for (int x = 0; x < image.getWidth(); x++) {
-			
 			cX = minx + dx * (x + xTileNum * image.getWidth());
 			cY = imaginary;
 
@@ -40,7 +39,7 @@ public abstract class RowCalculation implements Runnable {
 			
 			this.fillPixel(x, y, c);
 		}
-	}
+    }
 
 	abstract protected void fillPixel(int x, int y, Complex c);
 }
